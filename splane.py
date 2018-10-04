@@ -48,23 +48,39 @@ def analyze_sys( all_sys, aprox_name, bode_lenght=None, n=100, printW=-1):
     
     cant_sys = len(all_sys)
 
-    ## BODE plots
+    ## BODE Magnitude plots
     fig_id = 1
     axes_hdl = ()
     
     print("\n\n")
 
     for ii in range(cant_sys):
-        fig_id, axes_hdl = bodePlot(all_sys[ii], aprox_name[ii], fig_id, 
+        fig_id, axes_hdl = bodeMagPlot(all_sys[ii], aprox_name[ii], fig_id, 
                                     axes_hdl, bode_lenght, n, printW)
 
-    axes_hdl[0].legend(aprox_name)
+    axes_hdl.legend(aprox_name)
 
     if img_ext != 'none':
-        plt.savefig('-'.join(aprox_name) + '-Bode.' + img_ext, format=img_ext)
+        plt.savefig('-'.join(aprox_name) + '-BodeMagnitude.' + img_ext, format=img_ext)
+        
+        
+    ## BODE Phase plots
+    fig_id = 2
+    axes_hdl = ()
+    
+    print("\n\n")
+
+    for ii in range(cant_sys):
+        fig_id, axes_hdl = bodePhasePlot(all_sys[ii], aprox_name[ii], fig_id, 
+                                    axes_hdl, bode_lenght, n, printW)
+
+    axes_hdl.legend(aprox_name)
+
+    if img_ext != 'none':
+        plt.savefig('-'.join(aprox_name) + '-BodePhase.' + img_ext, format=img_ext)
 
     ## PZ Maps
-    fig_id = 2
+    fig_id = 3
     axes_hdl = ()
     
     for ii in range(cant_sys):
@@ -78,7 +94,7 @@ def analyze_sys( all_sys, aprox_name, bode_lenght=None, n=100, printW=-1):
     
     
     ## Group delay plots
-    fig_id = 3
+    fig_id = 4
     
     for ii in range(cant_sys):
         fig_id, axes_hdl = grpDelay(all_sys[ii], fig_id, bode_lenght)
@@ -254,12 +270,12 @@ def grpDelay(myFilter, fig_id='none', w=None, n=100):
 
     return fig_id, axes_hdl
 
-def bodePlot(myFilter, aprox_name, fig_id='none', axes_hdl='none', w=None, 
+def bodeMagPlot(myFilter, aprox_name, fig_id='none', axes_hdl='none', w=None, 
              n=100, printW=-1):
     
     w, mag, phase = myFilter.bode(w, n)
     
-    if printW>=0:
+    if printW >= 0:
         aux = 0
         for i in range(len(w)):
             if abs(w[i]-printW) <= abs(w[aux]-printW):
@@ -271,34 +287,53 @@ def bodePlot(myFilter, aprox_name, fig_id='none', axes_hdl='none', w=None,
         
 
     if fig_id == 'none':
-        fig_hdl, axes_hdl = plt.subplots(2, 1, sharex='col')
+        fig_hdl = plt.figure()
         fig_id = fig_hdl.number
     else:
         if plt.fignum_exists(fig_id):
             fig_hdl = plt.figure(fig_id)
-            axes_hdl = fig_hdl.get_axes()
         else:
-            fig_hdl, axes_hdl = plt.subplots(2, 1, sharex='col')
+            fig_hdl = plt.figure()
             fig_id = fig_hdl.number
 
-    (mag_ax_hdl, phase_ax_hdl) = axes_hdl
-    
-    plt.sca(mag_ax_hdl)
+#    plt.sca(mag)
     plt.semilogx(w, mag)    # Bode magnitude plot
     plt.grid(True)
     plt.xlabel('Angular frequency [rad/sec]')
     plt.ylabel('Magnitude response [dB]')
     plt.title('Frequency response')
-    
-    plt.sca(phase_ax_hdl)
-    plt.semilogx(w, phase)    # Bode phase plot
-    plt.grid(True)
-    plt.xlabel('Angular frequency [rad/sec]')
-    plt.ylabel('Phase response [deg]')
-    plt.title('Frequency response')
-    
+
+    axes_hdl = plt.gca()
+
     return fig_id, axes_hdl
     
+
+def bodePhasePlot(myFilter, aprox_name, fig_id='none', axes_hdl='none', w=None, 
+             n=100, printW=-1):
+    
+    w, mag, phase = myFilter.bode(w, n)
+    
+    if fig_id == 'none':
+        fig_hdl = plt.figure()
+        fig_id = fig_hdl.number
+    else:
+        if plt.fignum_exists(fig_id):
+            fig_hdl = plt.figure(fig_id)
+        else:
+            fig_hdl = plt.figure()
+            fig_id = fig_hdl.number
+
+    plt.semilogx(w, phase)    # Bode magnitude plot
+    plt.grid(True)
+    plt.xlabel('Angular frequency [rad/sec]')
+    plt.ylabel('Magnitude response [dB]')
+    plt.title('Frequency response')
+
+    axes_hdl = plt.gca()
+    
+    return fig_id, axes_hdl
+
+
 def convert2SOS(myFilter):
     
     SOSarray = tf2sos(myFilter.num, myFilter.den)
