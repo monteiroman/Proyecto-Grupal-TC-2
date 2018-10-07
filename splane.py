@@ -35,6 +35,8 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from collections import defaultdict
 from scipy.signal import tf2zpk,tf2sos
+#from mpldatacursor import datacursor
+from astropy.table import Table
 
 
 def analyze_sys( all_sys, aprox_name, bode_lenght=None, n=100, printW=-1):
@@ -42,29 +44,39 @@ def analyze_sys( all_sys, aprox_name, bode_lenght=None, n=100, printW=-1):
 #    %matplotlib qt5
 #    %matplotlib inline
     
-#   img_ext = 'none'
+#    img_ext = 'none'
 #    img_ext = 'png'
     img_ext = 'svg'
     
     cant_sys = len(all_sys)
 
-    ## BODE Magnitude plots
+    ## _________________BODE Magnitude plots_________________
     fig_id = 1
     axes_hdl = ()
+    data_rows = []
     
     print("\n\n")
 
     for ii in range(cant_sys):
-        fig_id, axes_hdl = bodeMagPlot(all_sys[ii], aprox_name[ii], fig_id, 
+        fig_id, axes_hdl, at, grpD = bodeMagPlot(all_sys[ii], aprox_name[ii], fig_id, 
                                     axes_hdl, bode_lenght, n, printW)
+        if printW:
+            data_rows.append((aprox_name[ii], at, grpD))
 
     axes_hdl.legend(aprox_name)
 
     if img_ext != 'none':
-        plt.savefig('-'.join(aprox_name) + '-BodeMagnitude.' + img_ext, format=img_ext)
+        plt.savefig('./images/pySvg/'+'-'.join(aprox_name) + '-BodeMagnitude.' + img_ext, format=img_ext)
         
         
-    ## BODE Phase plots
+    if printW != -1:
+        print (f"**_____Para w = {printW}[rad/seg] los valores obtenidos son:_____**\n")
+        t = Table(rows=data_rows, names=('Nombre del filtro',
+                                         'Atenuación [dB]', 'Retardo de Grupo [seg]'))
+        print(t)    
+    
+    
+    ## _________________BODE Phase plots_________________
     fig_id = 2
     axes_hdl = ()
     
@@ -77,9 +89,9 @@ def analyze_sys( all_sys, aprox_name, bode_lenght=None, n=100, printW=-1):
     axes_hdl.legend(aprox_name)
 
     if img_ext != 'none':
-        plt.savefig('-'.join(aprox_name) + '-BodePhase.' + img_ext, format=img_ext)
+        plt.savefig('./images/pySvg/'+'-'.join(aprox_name) + '-BodePhase.' + img_ext, format=img_ext)
 
-    ## PZ Maps
+    ## _________________PZ Maps_________________
     fig_id = 3
     axes_hdl = ()
     
@@ -90,10 +102,10 @@ def analyze_sys( all_sys, aprox_name, bode_lenght=None, n=100, printW=-1):
 
     if img_ext != 'none':
         plt.figure(fig_id)
-        plt.savefig('-'.join(aprox_name) + '-PZmap.' + img_ext, format=img_ext)
+        plt.savefig('./images/pySvg/'+'-'.join(aprox_name) + '-PZmap.' + img_ext, format=img_ext)
     
     
-    ## Group delay plots
+    ## _________________Group delay plots_________________
     fig_id = 4
     
     for ii in range(cant_sys):
@@ -104,7 +116,7 @@ def analyze_sys( all_sys, aprox_name, bode_lenght=None, n=100, printW=-1):
     axes_hdl.set_ylim(bottom=0)
 
     if img_ext != 'none':
-        plt.savefig('-'.join(aprox_name) + '-GrpDelay.'  + img_ext, format=img_ext)
+        plt.savefig('./images/pySvg/'+'-'.join(aprox_name) + '-GrpDelay.'  + img_ext, format=img_ext)
 
 
 
@@ -273,17 +285,22 @@ def grpDelay(myFilter, fig_id='none', w=None, n=100):
 def bodeMagPlot(myFilter, aprox_name, fig_id='none', axes_hdl='none', w=None, 
              n=100, printW=-1):
     
+    at = 0
+    
     w, mag, phase = myFilter.bode(w, n)
+    
+    phaseRad = phase * np.pi / 180.0
+    groupDelay = -np.diff(phaseRad)/np.diff(w)
     
     if printW >= 0:
         aux = 0
         for i in range(len(w)):
             if abs(w[i]-printW) <= abs(w[aux]-printW):
                 aux = i
-        s = mag[aux]
-        s2 = w[aux]
-        print(f"*El valor obtenido en el Bode en w={s2:.3f}" + " para un " + 
-              aprox_name + f" es: {s:.3f}dB\n")
+        at = "{:.4f}".format(mag[aux])
+        grpD =  "{:.4f}".format(groupDelay[aux-1])
+#        print(f"*El valor obtenido en el Bode en w={frec:.3f}" + " para un " + 
+#              aprox_name + f" es: {at:.3f}dB\n")
         
 
     if fig_id == 'none':
@@ -296,16 +313,17 @@ def bodeMagPlot(myFilter, aprox_name, fig_id='none', axes_hdl='none', w=None,
             fig_hdl = plt.figure()
             fig_id = fig_hdl.number
 
+#    datacursor()           #For showing curses in the ploted image  
 #    plt.sca(mag)
     plt.semilogx(w, mag)    # Bode magnitude plot
     plt.grid(True)
     plt.xlabel('Angular frequency [rad/sec]')
     plt.ylabel('Magnitude response [dB]')
-    plt.title('Frequency response')
+    plt.title('Frequency Magnitude response')
 
     axes_hdl = plt.gca()
 
-    return fig_id, axes_hdl
+    return fig_id, axes_hdl, at, grpD
     
 
 def bodePhasePlot(myFilter, aprox_name, fig_id='none', axes_hdl='none', w=None, 
@@ -323,11 +341,11 @@ def bodePhasePlot(myFilter, aprox_name, fig_id='none', axes_hdl='none', w=None,
             fig_hdl = plt.figure()
             fig_id = fig_hdl.number
 
-    plt.semilogx(w, phase)    # Bode magnitude plot
+    plt.semilogx(w, phase)    # Bode phase plot
     plt.grid(True)
     plt.xlabel('Angular frequency [rad/sec]')
-    plt.ylabel('Magnitude response [dB]')
-    plt.title('Frequency response')
+    plt.ylabel('Phase response [deg]')
+    plt.title('Frequency Phase response')
 
     axes_hdl = plt.gca()
     
